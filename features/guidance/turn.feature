@@ -1084,8 +1084,8 @@ Feature: Simple Turns
             | nodes | name          | highway   | oneway |
             | ab    | Stralauer Str | tertiary  | yes    |
             | bcde  | Holzmarktstr  | secondary | yes    |
-            | fg    | Stralauer Str | tertiary  | yes    |
-            | ghi   | Holzmarktstr  | secondary | yes    |
+            | gf    | Stralauer Str | tertiary  | yes    |
+            | ihg   | Holzmarktstr  | secondary | yes    |
             | lgbj  | Alexanderstr  | primary   | yes    |
             | kchm  | Alexanderstr  | primary   | yes    |
 
