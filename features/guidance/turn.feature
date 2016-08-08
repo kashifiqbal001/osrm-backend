@@ -1064,3 +1064,31 @@ Feature: Simple Turns
             | f,a       | depart,arrive | Hermannstr,Hermannstr |
             | y,f       | depart,arrive | Hermannstr,Hermannstr |
             | f,y       | depart,arrive | Hermannstr,Hermannstr |
+
+    # http://www.openstreetmap.org/#map=19/52.51556/13.41832
+    Scenario: No Slight Right over Jannowitzbruecke
+        Given the node map
+            |   |   |   | l |   | m |   |   |   |
+            |   |   |   |   |   |   |   |   |   |
+            | f |   |   |   |   |   |   |   |   |
+            |   |   |   | g |   | h |   |   |   |
+            |   |   |   |   |   |   |   |   |   |
+            |   |   |   |   |   |   |   |   | i |
+            | a |   |   |   |   |   |   |   |   |
+            |   |   |   | b |   | c |   |   |   |
+            |   |   |   |   |   |   | d |   |   |
+            |   |   |   |   |   |   |   |   | e |
+            |   |   |   | j |   | k |   |   |   |
+
+        And the ways
+            | nodes | name          | highway   | oneway |
+            | ab    | Stralauer Str | tertiary  | yes    |
+            | bcde  | Holzmarktstr  | secondary | yes    |
+            | fg    | Stralauer Str | tertiary  | yes    |
+            | ghi   | Holzmarktstr  | secondary | yes    |
+            | lgbj  | Alexanderstr  | primary   | yes    |
+            | kchm  | Alexanderstr  | primary   | yes    |
+
+        When I route I should get
+            | waypoints | turns          | route                      |
+            | a,e       | depart,arrive  | Stralauer Str,Holzmarktstr |
