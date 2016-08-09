@@ -636,8 +636,9 @@ template <class DataFacadeT, class Derived> class BasicRoutingInterface
         NodeID middle = SPECIAL_NODEID;
         distance = duration_upper_bound;
 
-        std::vector<std::pair<NodeID, EdgeWeight>> forward_entry_points;
-        std::vector<std::pair<NodeID, EdgeWeight>> reverse_entry_points;
+        using CoreEntryPoint = std::tuple<NodeID, EdgeWeight>;
+        std::vector<CoreEntryPoint> forward_entry_points;
+        std::vector<CoreEntryPoint> reverse_entry_points;
 
         // get offset to account for offsets on phantom nodes on compressed edges
         const auto min_edge_offset = std::min(0, forward_heap.MinKey());
@@ -693,34 +694,30 @@ template <class DataFacadeT, class Derived> class BasicRoutingInterface
         }
         // TODO check if unordered_set might be faster
         // sort by id and increasing by distance
-        auto entry_point_comparator = [](const std::pair<NodeID, EdgeWeight> &lhs,
-                                         const std::pair<NodeID, EdgeWeight> &rhs) {
-            return lhs.first < rhs.first || (lhs.first == rhs.first && lhs.second < rhs.second);
-        };
-        std::sort(forward_entry_points.begin(), forward_entry_points.end(), entry_point_comparator);
-        std::sort(reverse_entry_points.begin(), reverse_entry_points.end(), entry_point_comparator);
+        std::sort(forward_entry_points.begin(), forward_entry_points.end());
+        std::sort(reverse_entry_points.begin(), reverse_entry_points.end());
 
         NodeID last_id = SPECIAL_NODEID;
         forward_core_heap.Clear();
         reverse_core_heap.Clear();
         for (const auto &p : forward_entry_points)
         {
-            if (p.first == last_id)
+            if (std::get<0>(p) == last_id)
             {
                 continue;
             }
-            forward_core_heap.Insert(p.first, p.second, p.first);
-            last_id = p.first;
+            forward_core_heap.Insert(std::get<0>(p), std::get<1>(p), std::get<0>(p));
+            last_id = std::get<0>(p);
         }
         last_id = SPECIAL_NODEID;
         for (const auto &p : reverse_entry_points)
         {
-            if (p.first == last_id)
+            if (std::get<0>(p) == last_id)
             {
                 continue;
             }
-            reverse_core_heap.Insert(p.first, p.second, p.first);
-            last_id = p.first;
+            reverse_core_heap.Insert(std::get<0>(p), std::get<1>(p), std::get<0>(p));
+            last_id = std::get<0>(p);
         }
 
         // get offset to account for offsets on phantom nodes on compressed edges
