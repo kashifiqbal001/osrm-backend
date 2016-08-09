@@ -90,15 +90,8 @@ template <class DataFacadeT, class Derived> class BasicRoutingInterface
             if (new_distance < upper_bound)
             {
                 // if loops are forced, they are so at the source
-                if (new_distance >= 0 &&
-                    (!force_loop_forward || forward_heap.GetData(node).parent != node) &&
-                    (!force_loop_reverse || reverse_heap.GetData(node).parent != node))
-                {
-                    middle_node_id = node;
-                    upper_bound = new_distance;
-                }
-                else
-                {
+                if ((force_loop_forward && forward_heap.GetData(node).parent == node) ||
+                    (force_loop_reverse && reverse_heap.GetData(node).parent == node))
                     // check whether there is a loop present at the node
                     for (const auto edge : facade->GetAdjacentEdgeRange(node))
                     {
@@ -119,6 +112,13 @@ template <class DataFacadeT, class Derived> class BasicRoutingInterface
                                 }
                             }
                         }
+                    }
+                else
+                {
+                    if (new_distance > 0)
+                    {
+                        middle_node_id = node;
+                        upper_bound = new_distance;
                     }
                 }
             }
