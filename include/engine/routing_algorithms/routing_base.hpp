@@ -524,7 +524,11 @@ template <class DataFacadeT, class Derived> class BasicRoutingInterface
                                           std::vector<NodeID> &packed_path) const
     {
         NodeID current_node_id = middle_node_id;
-        while (current_node_id != search_heap.GetData(current_node_id).parent)
+        // all initial nodes will have itself as parent
+        // all incomplete paths (e.g. paths ending at the core boundary) will have SPECIAL_NODEID
+        // as parent
+        while (current_node_id != search_heap.GetData(current_node_id).parent &&
+               SPECIAL_NODEID  != search_heap.GetData(current_node_id).parent)
         {
             current_node_id = search_heap.GetData(current_node_id).parent;
             packed_path.emplace_back(current_node_id);
@@ -706,7 +710,7 @@ template <class DataFacadeT, class Derived> class BasicRoutingInterface
             {
                 continue;
             }
-            forward_core_heap.Insert(std::get<0>(p), std::get<1>(p), std::get<0>(p));
+            forward_core_heap.Insert(std::get<0>(p), std::get<1>(p), SPECIAL_NODEID);
             last_id = std::get<0>(p);
         }
         last_id = SPECIAL_NODEID;
@@ -716,7 +720,7 @@ template <class DataFacadeT, class Derived> class BasicRoutingInterface
             {
                 continue;
             }
-            reverse_core_heap.Insert(std::get<0>(p), std::get<1>(p), std::get<0>(p));
+            reverse_core_heap.Insert(std::get<0>(p), std::get<1>(p), SPECIAL_NODEID);
             last_id = std::get<0>(p);
         }
 
