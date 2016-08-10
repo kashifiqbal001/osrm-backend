@@ -1,3 +1,4 @@
+#include "extractor/guidance/constants.hpp"
 #include "extractor/guidance/turn_instruction.hpp"
 #include "engine/guidance/post_processing.hpp"
 
@@ -397,15 +398,43 @@ void collapseTurnAt(std::vector<RouteStep> &steps,
          !(one_back_step.maneuver.instruction.type == TurnType::Merge)))
     // the check against merge is a workaround for motorways
     {
-        BOOST_ASSERT(two_back_index < steps.size());
         if (compatible(one_back_step, steps[two_back_index]))
         {
             BOOST_ASSERT(!one_back_step.intersections.empty());
-            if (TurnType::Continue == current_step.maneuver.instruction.type ||
-                (TurnType::Suppressed == current_step.maneuver.instruction.type &&
+            const bool continue_or_suppressed =
+                (TurnType::Continue == current_step.maneuver.instruction.type ||
+                 (TurnType::Suppressed == current_step.maneuver.instruction.type &&
+                  current_step.maneuver.instruction.direction_modifier !=
+                      DirectionModifier::Straight));
+
+            const bool turning_name =
+                (TurnType::NewName == current_step.maneuver.instruction.type &&
                  current_step.maneuver.instruction.direction_modifier !=
-                     DirectionModifier::Straight))
-                steps[step_index].maneuver.instruction.type = TurnType::Turn;
+                     DirectionModifier::Straight &&
+                 one_back_step.intersections.front().bearings.size() > 2);
+
+            // A new name with a continue/turning suppressed/name requires the adaption of the
+            // direction modifier. The combination of the in-bearing and the out bearing gives the
+            // new modifier for the turn
+            if (continue_or_suppressed || turning_name)
+            {
+                const auto new_turn_angle =
+                    turn_angle(util::bearing::reverseBearing(
+                                   one_back_step.intersections.front()
+                                       .bearings[one_back_step.intersections.front().in]),
+                               current_step.intersections.front()
+                                   .bearings[current_step.intersections.front().out]);
+                steps[step_index].maneuver.instruction.direction_modifier =
+                    util::guidance::getTurnDirection(new_turn_angle);
+
+                // if the total direction of this turn is now straight, we can keep it suppressed/as
+                // a new name. Else we have to interpret it as a turn.
+                if (angularDeviation(new_turn_angle, extractor::guidance::STRAIGHT_ANGLE) >
+                    extractor::guidance::NARROW_TURN_ANGLE)
+                    steps[step_index].maneuver.instruction.type = TurnType::Turn;
+                else
+                    steps[step_index].maneuver.instruction.type = TurnType::NewName;
+            }
             else if (TurnType::Merge == current_step.maneuver.instruction.type)
             {
                 steps[step_index].maneuver.instruction.direction_modifier =
@@ -413,11 +442,6 @@ void collapseTurnAt(std::vector<RouteStep> &steps,
                         steps[step_index].maneuver.instruction.direction_modifier);
                 steps[step_index].maneuver.instruction.type = TurnType::Turn;
             }
-            else if (TurnType::NewName == current_step.maneuver.instruction.type &&
-                     current_step.maneuver.instruction.direction_modifier !=
-                         DirectionModifier::Straight &&
-                     one_back_step.intersections.front().bearings.size() > 2)
-                steps[step_index].maneuver.instruction.type = TurnType::Turn;
 
             steps[two_back_index] = elongate(std::move(steps[two_back_index]), one_back_step);
             // If the previous instruction asked to continue, the name change will have to

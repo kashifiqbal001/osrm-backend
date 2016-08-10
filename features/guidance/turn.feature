@@ -1092,3 +1092,30 @@ Feature: Simple Turns
         When I route I should get
             | waypoints | turns          | route                      |
             | a,e       | depart,arrive  | Stralauer Str,Holzmarktstr |
+
+    Scenario: No Slight Right over Jannowitzbruecke
+        Given the node map
+            |   |   |   | l |   | m |   |   |   |
+            |   |   |   |   |   |   |   |   |   |
+            |   |   |   |   |   |   |   |   |   |
+            |   |   |   | g |   | h |   |   |   |
+            | f |   |   |   |   |   |   |   |   |
+            |   |   |   |   |   |   |   |   | i |
+            |   |   |   |   |   |   |   |   |   |
+            |   |   |   | b |   | c |   |   |   |
+            | a |   |   |   |   |   |   | d |   |
+            |   |   |   |   |   |   |   |   | e |
+            |   |   |   | j |   | k |   |   |   |
+
+        And the ways
+            | nodes | name          | highway   | oneway |
+            | ab    | Stralauer Str | tertiary  | yes    |
+            | bcde  | Holzmarktstr  | secondary | yes    |
+            | gf    | Stralauer Str | tertiary  | yes    |
+            | ihg   | Holzmarktstr  | secondary | yes    |
+            | lgbj  | Alexanderstr  | primary   | yes    |
+            | kchm  | Alexanderstr  | primary   | yes    |
+
+        When I route I should get
+            | waypoints | turns          | route                      |
+            | a,e       | depart,arrive  | Stralauer Str,Holzmarktstr |
