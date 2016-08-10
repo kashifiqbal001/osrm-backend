@@ -418,18 +418,40 @@ void collapseTurnAt(std::vector<RouteStep> &steps,
             // new modifier for the turn
             if (continue_or_suppressed || turning_name)
             {
-                const auto new_turn_angle =
+                const auto first_angle =
+                    turn_angle(util::bearing::reverseBearing(
+                                   one_back_step.intersections.front()
+                                       .bearings[one_back_step.intersections.front().in]),
+                               one_back_step.intersections.front()
+                                   .bearings[current_step.intersections.front().out]);
+                const auto second_angle =
+                    turn_angle(util::bearing::reverseBearing(
+                                   current_step.intersections.front()
+                                       .bearings[one_back_step.intersections.front().in]),
+                               current_step.intersections.front()
+                                   .bearings[current_step.intersections.front().out]);
+
+                const auto bearing_turn_angle =
                     turn_angle(util::bearing::reverseBearing(
                                    one_back_step.intersections.front()
                                        .bearings[one_back_step.intersections.front().in]),
                                current_step.intersections.front()
                                    .bearings[current_step.intersections.front().out]);
-                steps[step_index].maneuver.instruction.direction_modifier =
-                    util::guidance::getTurnDirection(new_turn_angle);
+
+                // if the angles continue similar, it looks like we might be in a normal curve
+                if (angularDeviation(first_angle, second_angle) <
+                        extractor::guidance::FUZZY_ANGLE_DIFFERENCE &&
+                    angularDeviation(bearing_turn_angle, extractor::guidance::STRAIGHT_ANGLE) <
+                        extractor::guidance::NARROW_TURN_ANGLE)
+                    steps[step_index].maneuver.instruction.direction_modifier =
+                        DirectionModifier::Straight;
+                else
+                    steps[step_index].maneuver.instruction.direction_modifier =
+                        util::guidance::getTurnDirection(bearing_turn_angle);
 
                 // if the total direction of this turn is now straight, we can keep it suppressed/as
                 // a new name. Else we have to interpret it as a turn.
-                if (angularDeviation(new_turn_angle, extractor::guidance::STRAIGHT_ANGLE) >
+                if (angularDeviation(bearing_turn_angle, extractor::guidance::STRAIGHT_ANGLE) >
                     extractor::guidance::NARROW_TURN_ANGLE)
                     steps[step_index].maneuver.instruction.type = TurnType::Turn;
                 else
