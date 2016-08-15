@@ -218,8 +218,7 @@ bool IntersectionGenerator::CanMerge(const NodeID node_at_intersection,
                               coordinate_at_intersection,
                               node_at_intersection](const std::size_t index,
                                                     const std::size_t other_index) {
-        const auto GetActualTarget = [&](const std::size_t index)
-        {
+        const auto GetActualTarget = [&](const std::size_t index) {
             EdgeID last_in_edge_id;
             GetActualNextIntersection(
                 node_at_intersection, intersection[index].turn.eid, nullptr, &last_in_edge_id);
@@ -238,6 +237,10 @@ bool IntersectionGenerator::CanMerge(const NodeID node_at_intersection,
             coordinate_at_in_edge, coordinate_at_intersection, coordinate_at_other_target);
         const double distance_to_target = util::coordinate_calculation::haversineDistance(
             coordinate_at_intersection, coordinate_at_target);
+
+        const constexpr double MAX_COLLAPSE_DISTANCE = 30;
+        if (distance_to_target < MAX_COLLAPSE_DISTANCE)
+            return false;
 
         const bool becomes_narrower =
             angularDeviation(turn_angle, other_turn_angle) < NARROW_TURN_ANGLE &&
@@ -474,8 +477,6 @@ Intersection IntersectionGenerator::MergeSegregatedRoads(const NodeID intersecti
 Intersection IntersectionGenerator::AdjustForJoiningRoads(const NodeID node_at_intersection,
                                                           Intersection intersection) const
 {
-    // FIXME remove
-    return intersection;
     // nothing to do for dead ends
     if (intersection.size() <= 1)
         return intersection;
@@ -525,7 +526,7 @@ Intersection IntersectionGenerator::AdjustForJoiningRoads(const NodeID node_at_i
     return intersection;
 }
 
-inline Intersection
+Intersection
 IntersectionGenerator::GetActualNextIntersection(const NodeID starting_node,
                                                  const EdgeID via_edge,
                                                  NodeID *resulting_from_node = nullptr,
