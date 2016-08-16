@@ -1090,8 +1090,35 @@ Feature: Simple Turns
             | kchm  | Alexanderstr  | primary   | yes    |
 
         When I route I should get
-            | waypoints | turns                                | route                                   |
-            | a,e       | depart,new name slight right,arrive  | Stralauer Str,Holzmarktstr,Holzmarktstr |
+            | waypoints | turns                            | route                                   |
+            | a,e       | depart,new name straight,arrive  | Stralauer Str,Holzmarktstr,Holzmarktstr |
+
+    Scenario: No Slight Right over Jannowitzbruecke -- less extreme
+        Given the node map
+            |   |   |   | l |   | m |   |   |   |
+            |   |   |   |   |   |   |   |   |   |
+            | f |   |   |   |   |   |   |   |   |
+            |   |   |   | g |   | h |   |   |   |
+            |   |   |   |   |   |   |   |   |   |
+            |   |   |   |   |   |   |   |   | i |
+            | a |   |   |   |   |   |   |   |   |
+            |   |   |   | b |   | c |   |   |   |
+            |   |   |   |   |   |   |   |   |   |
+            |   |   |   |   |   |   |   |   | e |
+            |   |   |   | j |   | k |   |   |   |
+
+        And the ways
+            | nodes | name          | highway   | oneway |
+            | ab    | Stralauer Str | tertiary  | yes    |
+            | bce   | Holzmarktstr  | secondary | yes    |
+            | gf    | Stralauer Str | tertiary  | yes    |
+            | ihg   | Holzmarktstr  | secondary | yes    |
+            | lgbj  | Alexanderstr  | primary   | yes    |
+            | kchm  | Alexanderstr  | primary   | yes    |
+
+        When I route I should get
+            | waypoints | turns                           | route                                   |
+            | a,e       | depart,new name straight,arrive | Stralauer Str,Holzmarktstr,Holzmarktstr |
 
     Scenario: No Slight Right over Jannowitzbruecke
         Given the node map

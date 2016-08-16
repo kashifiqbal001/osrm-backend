@@ -499,6 +499,7 @@ Intersection IntersectionGenerator::AdjustForJoiningRoads(const NodeID node_at_i
         // the angle.
         const auto next_intersection_along_road =
             GetConnectedRoads(node_at_intersection, road.turn.eid);
+
         if (next_intersection_along_road.size() <= 1)
             continue;
 

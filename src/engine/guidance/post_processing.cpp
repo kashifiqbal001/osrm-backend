@@ -423,11 +423,11 @@ void collapseTurnAt(std::vector<RouteStep> &steps,
                                    one_back_step.intersections.front()
                                        .bearings[one_back_step.intersections.front().in]),
                                one_back_step.intersections.front()
-                                   .bearings[current_step.intersections.front().out]);
+                                   .bearings[one_back_step.intersections.front().out]);
                 const auto second_angle =
                     turn_angle(util::bearing::reverseBearing(
                                    current_step.intersections.front()
-                                       .bearings[one_back_step.intersections.front().in]),
+                                       .bearings[current_step.intersections.front().in]),
                                current_step.intersections.front()
                                    .bearings[current_step.intersections.front().out]);
 
@@ -438,11 +438,84 @@ void collapseTurnAt(std::vector<RouteStep> &steps,
                                current_step.intersections.front()
                                    .bearings[current_step.intersections.front().out]);
 
+                // When looking at an intersection, some angles, even though present, feel more like
+                // a straight turn. This happens most often at segregated intersections.
+                // We consider two cases
+                // I) a shift in the road:
+                //
+                // a       g      h
+                //     .   |      |
+                //         b ---- c
+                //         |      |    .
+                //         f      e        d
+                //
+                // Where a-d technicall continues straight, even though the shift models it as a
+                // slight left and a slight right turn.
+                //
+                // II) A curved road
+                //
+                //         g      h
+                //         |      |
+                //         b ---- c
+                //    .    |      |    .
+                // a       f      e        d
+                //
+                // where a-d is a curve passing by an intersection.
+                //
+                // We distinguish this case from other bearings though where the interpretation as
+                // straight would end up disguising turns.
+
+                // check if there is another similar turn next to the turn itself
+                const auto hasSimilarAngle = [&](const std::size_t index,
+                                                 const std::vector<short> &bearings) {
+                    return (angularDeviation(bearings[index],
+                                             bearings[(index + 1) % bearings.size()]) <
+                            extractor::guidance::NARROW_TURN_ANGLE) ||
+                           (angularDeviation(
+                                bearings[index],
+                                bearings[(index + bearings.size() - 1) % bearings.size()]) <
+                            extractor::guidance::NARROW_TURN_ANGLE);
+                };
+
+                const auto is_shift_or_curve = [&]() -> bool {
+                    // since we move an intersection modifier from a slight turn to a straight, we
+                    // need to make sure that there is not a similar angle which could prevent this
+                    // perception of angles to be true.
+                    if (hasSimilarAngle(one_back_step.intersections.front().in,
+                                        one_back_step.intersections.front().bearings) ||
+                        hasSimilarAngle(current_step.intersections.front().out,
+                                        current_step.intersections.front().bearings))
+                        return false;
+
+                    // Check if we are on a potential curve, both angles go in the same direction
+                    if (angularDeviation(first_angle, second_angle) <
+                        extractor::guidance::FUZZY_ANGLE_DIFFERENCE)
+                    {
+                        // We limit perceptive angles to narrow turns. If the total turn is going to
+                        // be not-narrow, we assume it to be more than a simple curve.
+                        return angularDeviation(bearing_turn_angle,
+                                                extractor::guidance::STRAIGHT_ANGLE) <
+                               extractor::guidance::NARROW_TURN_ANGLE;
+                    }
+                    // if one of the angles is a left turn and the other one is a right turn, we
+                    // nearly reverse the angle
+                    else if ((first_angle > extractor::guidance::STRAIGHT_ANGLE) !=
+                             (second_angle > extractor::guidance::STRAIGHT_ANGLE))
+                    {
+                        // since we are not in a curve, we can check for a shift. If we are going
+                        // nearly straight, we call it a shift.
+                        return angularDeviation(bearing_turn_angle,
+                                                extractor::guidance::STRAIGHT_ANGLE) <
+                               extractor::guidance::NARROW_TURN_ANGLE;
+                    }
+                    else
+                    {
+                        return false;
+                    }
+                }();
+
                 // if the angles continue similar, it looks like we might be in a normal curve
-                if (angularDeviation(first_angle, second_angle) <
-                        extractor::guidance::FUZZY_ANGLE_DIFFERENCE &&
-                    angularDeviation(bearing_turn_angle, extractor::guidance::STRAIGHT_ANGLE) <
-                        extractor::guidance::NARROW_TURN_ANGLE)
+                if (is_shift_or_curve)
                     steps[step_index].maneuver.instruction.direction_modifier =
                         DirectionModifier::Straight;
                 else
@@ -451,8 +524,7 @@ void collapseTurnAt(std::vector<RouteStep> &steps,
 
                 // if the total direction of this turn is now straight, we can keep it suppressed/as
                 // a new name. Else we have to interpret it as a turn.
-                if (angularDeviation(bearing_turn_angle, extractor::guidance::STRAIGHT_ANGLE) >
-                    extractor::guidance::NARROW_TURN_ANGLE)
+                if (!is_shift_or_curve)
                     steps[step_index].maneuver.instruction.type = TurnType::Turn;
                 else
                     steps[step_index].maneuver.instruction.type = TurnType::NewName;
@@ -531,7 +603,7 @@ void collapseTurnAt(std::vector<RouteStep> &steps,
         const bool direct_u_turn = steps[two_back_index].name == current_step.name;
 
         // however, we might also deal with a dual-collapse scenario in which we have to
-        // additionall collapse a name-change as welll
+        // additionally collapse a name-change as well
         const auto next_step_index = step_index + 1;
         const bool continues_with_name_change =
             (next_step_index < steps.size()) &&
