@@ -91,7 +91,11 @@ template <class DataFacadeT, class Derived> class BasicRoutingInterface
             {
                 // if loops are forced, they are so at the source
                 if ((force_loop_forward && forward_heap.GetData(node).parent == node) ||
-                    (force_loop_reverse && reverse_heap.GetData(node).parent == node))
+                    (force_loop_reverse && reverse_heap.GetData(node).parent == node) ||
+                    // in this case we are looking at a bi-directional way where the source
+                    // and target phantom are on the same edge based node
+                    new_distance < 0)
+                {
                     // check whether there is a loop present at the node
                     for (const auto edge : facade->GetAdjacentEdgeRange(node))
                     {
@@ -113,13 +117,13 @@ template <class DataFacadeT, class Derived> class BasicRoutingInterface
                             }
                         }
                     }
+                }
                 else
                 {
-                    if (new_distance > 0)
-                    {
-                        middle_node_id = node;
-                        upper_bound = new_distance;
-                    }
+                    BOOST_ASSERT(new_distance >= 0);
+
+                    middle_node_id = node;
+                    upper_bound = new_distance;
                 }
             }
         }
