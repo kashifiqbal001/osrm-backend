@@ -644,7 +644,7 @@ template <class DataFacadeT, class Derived> class BasicRoutingInterface
         NodeID middle = SPECIAL_NODEID;
         distance = duration_upper_bound;
 
-        using CoreEntryPoint = std::tuple<NodeID, EdgeWeight>;
+        using CoreEntryPoint = std::tuple<NodeID, EdgeWeight, NodeID>;
         std::vector<CoreEntryPoint> forward_entry_points;
         std::vector<CoreEntryPoint> reverse_entry_points;
 
@@ -663,7 +663,7 @@ template <class DataFacadeT, class Derived> class BasicRoutingInterface
                 {
                     const NodeID node = forward_heap.DeleteMin();
                     const int key = forward_heap.GetKey(node);
-                    forward_entry_points.emplace_back(node, key);
+                    forward_entry_points.emplace_back(node, key, forward_heap.GetData(node).parent);
                 }
                 else
                 {
@@ -684,7 +684,7 @@ template <class DataFacadeT, class Derived> class BasicRoutingInterface
                 {
                     const NodeID node = reverse_heap.DeleteMin();
                     const int key = reverse_heap.GetKey(node);
-                    reverse_entry_points.emplace_back(node, key);
+                    reverse_entry_points.emplace_back(node, key, reverse_heap.GetData(node).parent);
                 }
                 else
                 {
@@ -705,27 +705,39 @@ template <class DataFacadeT, class Derived> class BasicRoutingInterface
         std::sort(forward_entry_points.begin(), forward_entry_points.end());
         std::sort(reverse_entry_points.begin(), reverse_entry_points.end());
 
-        NodeID last_id = SPECIAL_NODEID;
+        // inserts the entry point in the heap if it wasn't inserted before and updates last_id
+        const auto insertInCoreHeap =
+            [](const CoreEntryPoint &p, SearchEngineData::QueryHeap &core_heap, NodeID &last_id) {
+                NodeID id;
+                EdgeWeight weight;
+                NodeID parent;
+                std::tie(id, weight, parent) = p;
+                if (id == last_id)
+                {
+                    return;
+                }
+
+                // if the node is not a start node, we mark it as leading out of the core
+                if (parent != id)
+                {
+                    parent = SPECIAL_NODEID;
+                }
+                core_heap.Insert(id, weight, parent);
+                last_id = id;
+            };
+
         forward_core_heap.Clear();
-        reverse_core_heap.Clear();
+        NodeID last_id = SPECIAL_NODEID;
         for (const auto &p : forward_entry_points)
         {
-            if (std::get<0>(p) == last_id)
-            {
-                continue;
-            }
-            forward_core_heap.Insert(std::get<0>(p), std::get<1>(p), SPECIAL_NODEID);
-            last_id = std::get<0>(p);
+            insertInCoreHeap(p, forward_core_heap, last_id);
         }
+
+        reverse_core_heap.Clear();
         last_id = SPECIAL_NODEID;
         for (const auto &p : reverse_entry_points)
         {
-            if (std::get<0>(p) == last_id)
-            {
-                continue;
-            }
-            reverse_core_heap.Insert(std::get<0>(p), std::get<1>(p), SPECIAL_NODEID);
-            last_id = std::get<0>(p);
+            insertInCoreHeap(p, reverse_core_heap, last_id);
         }
 
         // get offset to account for offsets on phantom nodes on compressed edges
